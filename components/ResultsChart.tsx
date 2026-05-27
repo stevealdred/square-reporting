@@ -175,7 +175,10 @@ export function ResultsChart({
 
   const timePivot = seriesLimit?.pivot ?? null;
 
-  const categoryDimensions = timeColumn ? [] : dimensionColumns;
+  const categoryDimensions = useMemo(
+    () => (timeColumn ? [] : dimensionColumns),
+    [timeColumn, dimensionColumns],
+  );
 
   const xKey = useMemo(() => {
     if (timePivot) return timePivot.timeKey;
@@ -302,7 +305,7 @@ export function ResultsChart({
       }
       return r;
     });
-  }, [data, measures, timeColumn, categoryDimensions, timePivot, categoryLimit, locationNames]);
+  }, [data, measures, timeColumn, timePivot, categoryLimit]);
 
   const lineDataKeys = useMemo(() => {
     if (timePivot) return timePivot.seriesKeys;
