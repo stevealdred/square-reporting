@@ -1,15 +1,27 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 
 export type Theme = "light" | "dark";
+
+/** Must match `data-theme` on `<html>` in `app/layout.tsx` for SSR. */
+const SERVER_THEME: Theme = "dark";
 
 const STORAGE_KEY = "theme";
 
 function readDom(): Theme {
-  if (typeof document === "undefined") return "dark";
+  if (typeof document === "undefined") return SERVER_THEME;
   const t = document.documentElement.dataset.theme;
   return t === "light" ? "light" : "dark";
+}
+
+function subscribe(onStoreChange: () => void): () => void {
+  const obs = new MutationObserver(onStoreChange);
+  obs.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ["data-theme"],
+  });
+  return () => obs.disconnect();
 }
 
 /**
@@ -19,19 +31,23 @@ function readDom(): Theme {
  * before paint to avoid a light/dark flash, and persisted to localStorage.
  * Components observe the attribute via a MutationObserver so they re-render
  * whenever the toggle flips it.
+ *
+ * Until the client has mounted, this hook returns {@link SERVER_THEME} so SSR and
+ * hydration match even when the bootstrap script applied a stored light theme.
  */
 export function useTheme(): readonly [Theme, (next: Theme) => void] {
-  const [theme, setTheme] = useState<Theme>(() => readDom());
+  const domTheme = useSyncExternalStore(
+    subscribe,
+    readDom,
+    () => SERVER_THEME,
+  );
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setTheme(readDom());
-    const obs = new MutationObserver(() => setTheme(readDom()));
-    obs.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ["data-theme"],
-    });
-    return () => obs.disconnect();
+    setMounted(true);
   }, []);
+
+  const theme = mounted ? domTheme : SERVER_THEME;
 
   function set(next: Theme) {
     document.documentElement.dataset.theme = next;

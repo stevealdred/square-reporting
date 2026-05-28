@@ -11,6 +11,7 @@ import { OrderLimitControls } from "./OrderLimitControls";
 import { QueryJsonPreview } from "./QueryJsonPreview";
 import { Section } from "./ui/Section";
 import { Pill } from "./ui/Badge";
+import { SignOutButton } from "./SignOutButton";
 import { ThemeToggle } from "./ui/ThemeToggle";
 import type {
   CubeMeta,
@@ -43,6 +44,7 @@ interface QueryBuilderProps {
   onChange: (next: BuilderState) => void;
   onRun: () => void;
   isRunning: boolean;
+  showSignOut?: boolean;
 }
 
 export function buildQuery(state: BuilderState): ReportingQuery {
@@ -67,6 +69,7 @@ export function QueryBuilder({
   onChange,
   onRun,
   isRunning,
+  showSignOut = false,
 }: QueryBuilderProps) {
   const cube: CubeMeta | null = useMemo(
     () => meta.cubes.find((c) => c.name === state.cube) ?? null,
@@ -129,12 +132,13 @@ export function QueryBuilder({
       <div className="flex flex-col gap-1 border-b border-zinc-800 px-1 pb-3">
         <div className="flex items-center justify-between gap-2">
           <h1 className="text-lg font-semibold text-zinc-100">Report builder</h1>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             {cube && (
               <Pill tone={cube.type === "view" ? "success" : "info"}>
                 {cube.type === "view" ? "View" : "Cube"}
               </Pill>
             )}
+            {showSignOut ? <SignOutButton /> : null}
             <ThemeToggle />
           </div>
         </div>

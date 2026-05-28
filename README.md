@@ -55,6 +55,21 @@ The app runs at <http://localhost:3000>.
 | `REPORTING_MAX_RETRIES` | `10` | Maximum `Continue wait` retries before returning HTTP 504. |
 | `REPORTING_RETRY_MS` | `1500` | Delay between retries (ms). |
 
+### Entegraid main-page SSO (optional)
+
+When Microsoft Entra ID credentials are configured, unauthenticated users are redirected from `/` to `/login` for SSO sign-in. **Only the home page is gated** — `/api/meta`, `/api/query`, `/api/locations`, and all other routes behave exactly as before.
+
+| Variable | Purpose |
+| --- | --- |
+| `ENTEGRAID_MAIN_PAGE_SSO_ENABLED` | Set to `false` to disable the gate even if Entra credentials exist. Set to `true` to require SSO when `AUTH_SECRET` and Entra vars are set. |
+| `AUTH_SECRET` | Session encryption secret (`openssl rand -base64 32`). |
+| `AUTH_URL` | Public URL of the app (e.g. `http://localhost:3000` or your production domain). |
+| `AUTH_MICROSOFT_ENTRA_ID_ID` | Azure app registration client ID. |
+| `AUTH_MICROSOFT_ENTRA_ID_SECRET` | Azure client secret. |
+| `AUTH_MICROSOFT_ENTRA_ID_ISSUER` | Tenant issuer URL, e.g. `https://login.microsoftonline.com/<tenant-id>/v2.0`. |
+
+Register a **Web** redirect URI in Entra ID: `https://<your-host>/api/auth/callback/microsoft-entra-id`.
+
 The token is **never** sent to the browser — all calls go through the `/api/meta` and `/api/query` proxy routes.
 
 ## Running your first query

@@ -17,9 +17,8 @@ export function ThemeToggle({ className }: ThemeToggleProps) {
       aria-label={`Switch to ${isDark ? "light" : "dark"} theme`}
       title={`Switch to ${isDark ? "light" : "dark"} theme`}
       className={`inline-flex h-8 w-8 items-center justify-center rounded-md border border-zinc-700 bg-zinc-900 text-zinc-300 hover:border-zinc-600 hover:text-zinc-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60 ${className ?? ""}`}
-      suppressHydrationWarning
     >
-      <span aria-hidden suppressHydrationWarning>
+      <span aria-hidden>
         {isDark ? <MoonIcon /> : <SunIcon />}
       </span>
     </button>
