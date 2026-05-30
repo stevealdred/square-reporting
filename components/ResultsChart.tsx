@@ -56,19 +56,19 @@ interface ChartPalette {
 }
 
 const DARK_PALETTE: ChartPalette = {
-  grid: "#27272a",
-  axis: "#71717a",
-  tooltipBg: "#18181b",
-  tooltipBorder: "#3f3f46",
-  tooltipText: "#f4f4f5",
+  grid: "#3d3934",
+  axis: "#8a8278",
+  tooltipBg: "#2a2723",
+  tooltipBorder: "#4a4540",
+  tooltipText: "#f0ebe4",
 };
 
 const LIGHT_PALETTE: ChartPalette = {
-  grid: "#e4e4e7",
-  axis: "#52525b",
-  tooltipBg: "#ffffff",
-  tooltipBorder: "#d4d4d8",
-  tooltipText: "#18181b",
+  grid: "#e5dfd4",
+  axis: "#6b6359",
+  tooltipBg: "#faf7f2",
+  tooltipBorder: "#d9d2c6",
+  tooltipText: "#2c2824",
 };
 
 /** Synthetic row key when multiple dimensions are combined for the category axis. */
@@ -84,14 +84,14 @@ interface ResultsChartProps {
 }
 
 const SERIES_COLORS = [
-  "#fbbf24",
-  "#38bdf8",
-  "#a78bfa",
-  "#34d399",
-  "#f472b6",
-  "#fb923c",
-  "#60a5fa",
-  "#facc15",
+  "#c4956a",
+  "#6b9dad",
+  "#8b7cb8",
+  "#6aab80",
+  "#c4849a",
+  "#d4a066",
+  "#7a9ec7",
+  "#b8a066",
 ];
 
 export function ResultsChart({

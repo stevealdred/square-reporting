@@ -85,7 +85,7 @@ function Group({
                 onClick={() => onChange(c.name)}
                 className={`flex w-full items-start justify-between gap-3 rounded-md border px-3 py-2 text-left transition-colors ${
                   isSelected
-                    ? "border-amber-400/50 bg-amber-500/10 text-amber-50"
+                    ? "border-amber-400/50 bg-amber-500/10 text-zinc-200"
                     : "border-transparent bg-zinc-950/40 text-zinc-200 hover:border-zinc-700 hover:bg-zinc-900"
                 }`}
               >
