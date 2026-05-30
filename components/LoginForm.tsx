@@ -31,8 +31,9 @@ export function LoginForm() {
             className="mt-4 rounded-md border border-rose-500/30 bg-rose-950/40 px-3 py-2 text-left text-sm text-rose-200"
             role="alert"
           >
-            Sign-in failed ({error}). Contact your Entra ID administrator if
-            this continues.
+            {error === "AccessDenied"
+              ? "Your organization is not authorized to use this app. Sign in with an approved work account or contact your administrator."
+              : `Sign-in failed (${error}). Contact your Entra ID administrator if this continues.`}
           </p>
         )}
 

@@ -62,13 +62,16 @@ When Microsoft Entra ID credentials are configured, unauthenticated users are re
 | Variable | Purpose |
 | --- | --- |
 | `ENTEGRAID_MAIN_PAGE_SSO_ENABLED` | Set to `false` to disable the gate even if Entra credentials exist. Set to `true` to require SSO when `AUTH_SECRET` and Entra vars are set. |
-| `AUTH_SECRET` | Session encryption secret (`openssl rand -base64 32`). |
+| `AUTH_SECRET` | **Required when SSO is on.** Session encryption secret (`openssl rand -base64 32`). Set this in Vercel **Production** (and Preview if you test SSO there). |
 | `AUTH_URL` | Public URL of the app (e.g. `http://localhost:3000` or your production domain). |
 | `AUTH_MICROSOFT_ENTRA_ID_ID` | Azure app registration client ID. |
 | `AUTH_MICROSOFT_ENTRA_ID_SECRET` | Azure client secret. |
-| `AUTH_MICROSOFT_ENTRA_ID_ISSUER` | Tenant issuer URL, e.g. `https://login.microsoftonline.com/<tenant-id>/v2.0`. |
+| `AUTH_MICROSOFT_ENTRA_ID_ALLOWED_TENANTS` | Comma-separated Entra **tenant IDs** (directory IDs) that may sign in, e.g. `11111111-....,22222222-....`. Required when `ENTEGRAID_MAIN_PAGE_SSO_ENABLED=true`. |
+| `AUTH_MICROSOFT_ENTRA_ID_ISSUER` | Optional OIDC issuer override. If omitted: one allowed tenant uses that tenant’s issuer; multiple tenants use `https://login.microsoftonline.com/organizations/v2.0`. You can still set a single-tenant issuer URL for backward compatibility — the tenant ID in that URL counts as the allowlist when `ALLOWED_TENANTS` is unset. |
 
 Register a **Web** redirect URI in Entra ID: `https://<your-host>/api/auth/callback/microsoft-entra-id`.
+
+For **several organizations**, set the app registration **Supported account types** to *Accounts in any organizational directory (Multitenant)*, list every partner tenant ID in `AUTH_MICROSOFT_ENTRA_ID_ALLOWED_TENANTS`, and have each org’s admin grant consent (or use admin consent flow). Sign-ins from tenants not on the list are rejected (`AccessDenied` on `/login`).
 
 The token is **never** sent to the browser — all calls go through the `/api/meta` and `/api/query` proxy routes.
 

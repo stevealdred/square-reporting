@@ -3,7 +3,7 @@ import { ReportingPage } from "@/components/ReportingPage";
 import { isMainPageSsoEnabled } from "@/lib/mainPageAuth";
 
 export default async function HomePage() {
-  const session = await auth();
+  const session = isMainPageSsoEnabled() ? await auth() : null;
   const showSignOut = isMainPageSsoEnabled() && Boolean(session);
 
   return <ReportingPage showSignOut={showSignOut} />;
