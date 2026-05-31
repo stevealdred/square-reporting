@@ -47,6 +47,32 @@ interface QueryBuilderProps {
   showSignOut?: boolean;
 }
 
+export function hasActiveSelections(state: BuilderState): boolean {
+  return (
+    state.measures.length > 0 ||
+    state.dimensions.length > 0 ||
+    state.timeDimension !== null ||
+    state.segments.length > 0 ||
+    state.filters.length > 0 ||
+    state.order !== null ||
+    state.offset !== 0
+  );
+}
+
+export function resetSelections(state: BuilderState): BuilderState {
+  return {
+    ...state,
+    measures: [],
+    dimensions: [],
+    timeDimension: null,
+    segments: [],
+    filters: [],
+    filterMode: "and",
+    order: null,
+    offset: 0,
+  };
+}
+
 export function buildQuery(state: BuilderState): ReportingQuery {
   const q: ReportingQuery = {};
   if (state.measures.length) q.measures = state.measures;
@@ -127,6 +153,12 @@ export function QueryBuilder({
       state.dimensions.length > 0 ||
       !!state.timeDimension);
 
+  const canClear = !!cube && hasActiveSelections(state);
+
+  function clearAll() {
+    onChange(resetSelections(state));
+  }
+
   return (
     <div className="flex h-full flex-col gap-3">
       <div className="flex flex-col gap-1 border-b border-zinc-800 px-1 pb-3">
@@ -142,9 +174,19 @@ export function QueryBuilder({
             <ThemeToggle />
           </div>
         </div>
-        <p className="text-xs text-zinc-500">
-          Pick a source, then add measures and dimensions. Run to see results.
-        </p>
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs text-zinc-500">
+            Pick a source, then add measures and dimensions. Run to see results.
+          </p>
+          <button
+            type="button"
+            onClick={clearAll}
+            disabled={!canClear}
+            className="shrink-0 rounded-md border border-zinc-700 bg-zinc-900 px-2.5 py-1 text-[11px] font-medium text-zinc-300 hover:border-zinc-600 hover:text-zinc-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60 disabled:cursor-not-allowed disabled:border-zinc-800 disabled:bg-zinc-950 disabled:text-zinc-600"
+          >
+            Clear all filters
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 space-y-3 overflow-y-auto pr-1">
