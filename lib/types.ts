@@ -178,6 +178,10 @@ export interface SquareLocation {
   status?: "ACTIVE" | "INACTIVE" | string;
   type?: string;
   timezone?: string;
+  /** ISO 4217 currency code for this location (e.g. "CAD", "USD"). */
+  currency?: string;
+  /** ISO 3166-1-alpha-2 country code (e.g. "CA", "US"). */
+  country?: string;
   address?: {
     address_line_1?: string;
     address_line_2?: string;

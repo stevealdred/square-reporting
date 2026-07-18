@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { resolveMerchantCurrency } from "@/lib/locations";
 import {
   getCachedLocations,
   invalidateLocationsCache,
@@ -6,6 +7,12 @@ import {
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+function envCurrencyOverride(): string | undefined {
+  const raw = process.env.SQUARE_CURRENCY?.trim().toUpperCase();
+  if (raw && /^[A-Z]{3}$/.test(raw)) return raw;
+  return undefined;
+}
 
 export async function GET(req: NextRequest) {
   const force = req.nextUrl.searchParams.get("refresh") === "1";
@@ -25,11 +32,15 @@ export async function GET(req: NextRequest) {
         { status: result.status >= 400 ? result.status : 500 },
       );
     }
+    const locations = result.locations || [];
+    const currency =
+      envCurrencyOverride() || resolveMerchantCurrency(locations) || "USD";
     return NextResponse.json({
       ok: true,
       cached: result.cached,
       fetchedAt: result.fetchedAt,
-      locations: result.locations || [],
+      currency,
+      locations,
     });
   } catch (err) {
     return NextResponse.json(

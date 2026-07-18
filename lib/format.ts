@@ -4,6 +4,11 @@ import type { MeasureMeta } from "./types";
  * Square returns numeric measures as strings (`"1250.50"`). This module
  * centralises the parsing + presentation logic so every view formats values
  * consistently using the per-measure `format` hint from `/v1/meta`.
+ *
+ * Currency codes come from the merchant's Square locations (or an optional
+ * `SQUARE_CURRENCY` env override exposed via `/api/locations`). Browser locale
+ * still controls separators/symbol placement (e.g. en-CA + CAD → `$1,234.56`
+ * or `CA$…` depending on the runtime).
  */
 
 export function toNumber(value: unknown): number | null {
@@ -18,12 +23,26 @@ export function toNumber(value: unknown): number | null {
   return null;
 }
 
-const currencyFormatter = new Intl.NumberFormat(undefined, {
-  style: "currency",
-  currency: "USD",
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
+const DEFAULT_CURRENCY = "USD";
+
+const currencyFormatters = new Map<string, Intl.NumberFormat>();
+
+function getCurrencyFormatter(currency: string): Intl.NumberFormat {
+  const code = /^[A-Za-z]{3}$/.test(currency)
+    ? currency.toUpperCase()
+    : DEFAULT_CURRENCY;
+  let formatter = currencyFormatters.get(code);
+  if (!formatter) {
+    formatter = new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency: code,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+    currencyFormatters.set(code, formatter);
+  }
+  return formatter;
+}
 
 const percentFormatter = new Intl.NumberFormat(undefined, {
   style: "percent",
@@ -43,11 +62,12 @@ const compactNumberFormatter = new Intl.NumberFormat(undefined, {
 export function formatMeasureValue(
   value: unknown,
   measure: MeasureMeta | undefined,
+  currency: string = DEFAULT_CURRENCY,
 ): string {
   const n = toNumber(value);
   if (n === null) return value == null ? "—" : String(value);
   const fmt = measure?.format;
-  if (fmt === "currency") return currencyFormatter.format(n);
+  if (fmt === "currency") return getCurrencyFormatter(currency).format(n);
   if (fmt === "percent") {
     // Square sometimes returns percent as 0–100, sometimes as 0–1. Heuristic:
     // values with abs > 1 are treated as already in 0–100 scale.

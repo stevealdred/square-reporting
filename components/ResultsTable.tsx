@@ -16,6 +16,8 @@ interface ResultsTableProps {
   data: ReportingLoadResponse["data"];
   columns: string[];
   columnTitles: Record<string, string>;
+  /** ISO 4217 code from the merchant's Square locations (e.g. "CAD"). */
+  currency?: string;
 }
 
 type SortDir = "asc" | "desc" | null;
@@ -25,6 +27,7 @@ export function ResultsTable({
   data,
   columns,
   columnTitles,
+  currency,
 }: ResultsTableProps) {
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>(null);
@@ -40,6 +43,7 @@ export function ResultsTable({
     () => buildLocationNameMap(locationsData?.locations),
     [locationsData?.locations],
   );
+  const moneyCurrency = currency || locationsData?.currency;
 
   const sorted = useMemo(() => {
     if (!sortKey || !sortDir) return data;
@@ -140,7 +144,7 @@ export function ResultsTable({
                       ? locationNames.get(value)
                       : undefined;
                   const display = isMeasure
-                    ? formatMeasureValue(value, measure)
+                    ? formatMeasureValue(value, measure, moneyCurrency)
                     : value == null
                       ? "—"
                       : locationName ?? String(value);

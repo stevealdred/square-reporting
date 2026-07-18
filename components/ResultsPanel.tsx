@@ -6,10 +6,12 @@ import { ResultsTable, rowsToCsv } from "./ResultsTable";
 import { SummaryCards } from "./SummaryCards";
 import { Pill } from "./ui/Badge";
 import { buildColumnTitles } from "@/lib/columnTitles";
+import { isCurrencyMember } from "@/lib/format";
 import {
   omitRedundantTimeColumns,
   resolveTimeColumnKey,
 } from "@/lib/resultColumns";
+import { useLocations } from "@/lib/useLocations";
 import type {
   ApiQueryResponse,
   CubeMeta,
@@ -43,6 +45,16 @@ export function ResultsPanel({
   onRetry,
 }: ResultsPanelProps) {
   const [tab, setTab] = useState<Tab>("summary");
+
+  // Load locations whenever currency measures are selected so money amounts
+  // format with the merchant's Square currency (e.g. CAD), not hardcoded USD.
+  const needsCurrency = useMemo(
+    () =>
+      Boolean(cube && measures.some((m) => isCurrencyMember(m, cube.measures))),
+    [cube, measures],
+  );
+  const { data: locationsData } = useLocations(needsCurrency);
+  const currency = locationsData?.currency;
 
   const data = useMemo(
     () =>
@@ -214,6 +226,7 @@ export function ResultsPanel({
               cube={cube}
               data={result.data}
               measureNames={measures}
+              currency={currency}
             />
             {result.data.length > 0 && (
               <ResultsTable
@@ -221,6 +234,7 @@ export function ResultsPanel({
                 data={result.data.slice(0, 10)}
                 columns={columns}
                 columnTitles={columnTitles}
+                currency={currency}
               />
             )}
             {result.data.length > 10 && (
@@ -237,6 +251,7 @@ export function ResultsPanel({
             data={result.data}
             columns={columns}
             columnTitles={columnTitles}
+            currency={currency}
           />
         )}
         {result?.ok && tab === "chart" && (
@@ -247,6 +262,7 @@ export function ResultsPanel({
             columns={columns}
             timeDimension={timeDimension}
             columnTitles={columnTitles}
+            currency={currency}
           />
         )}
         {result && tab === "json" && (

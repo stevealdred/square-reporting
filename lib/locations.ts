@@ -24,9 +24,40 @@ export function buildLocationNameMap(
   return map;
 }
 
+/**
+ * Pick the merchant's display currency from Square locations.
+ * Prefers ACTIVE locations; uses the most common currency code among them.
+ */
+export function resolveMerchantCurrency(
+  locations: SquareLocation[] | undefined,
+): string | undefined {
+  if (!locations?.length) return undefined;
+  const active = locations.filter(
+    (l) => !l.status || l.status.toUpperCase() === "ACTIVE",
+  );
+  const pool = active.length > 0 ? active : locations;
+  const counts = new Map<string, number>();
+  for (const loc of pool) {
+    const code = loc.currency?.trim().toUpperCase();
+    if (!code || !/^[A-Z]{3}$/.test(code)) continue;
+    counts.set(code, (counts.get(code) || 0) + 1);
+  }
+  let best: string | undefined;
+  let bestCount = 0;
+  for (const [code, count] of counts) {
+    if (count > bestCount) {
+      best = code;
+      bestCount = count;
+    }
+  }
+  return best;
+}
+
 export interface LocationsApiResponse {
   ok: boolean;
   locations?: SquareLocation[];
+  /** Resolved ISO 4217 currency for money formatting (from locations or env). */
+  currency?: string;
   error?: string;
   cached?: boolean;
   fetchedAt?: number;

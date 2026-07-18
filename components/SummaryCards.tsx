@@ -7,6 +7,8 @@ interface SummaryCardsProps {
   cube: CubeMeta | null;
   data: ReportingLoadResponse["data"];
   measureNames: string[];
+  /** ISO 4217 code from the merchant's Square locations (e.g. "CAD"). */
+  currency?: string;
 }
 
 /**
@@ -19,7 +21,12 @@ interface SummaryCardsProps {
  * `avg`-type measures the sum-of-rows is misleading, so we display the
  * average of the row values instead.
  */
-export function SummaryCards({ cube, data, measureNames }: SummaryCardsProps) {
+export function SummaryCards({
+  cube,
+  data,
+  measureNames,
+  currency,
+}: SummaryCardsProps) {
   if (measureNames.length === 0) return null;
 
   return (
@@ -55,7 +62,9 @@ export function SummaryCards({ cube, data, measureNames }: SummaryCardsProps) {
               {measure?.title || name}
             </p>
             <p className="mt-2 text-3xl font-bold tabular-nums text-zinc-100">
-              {total === null ? "—" : formatMeasureValue(total, measure)}
+              {total === null
+                ? "—"
+                : formatMeasureValue(total, measure, currency)}
             </p>
             <p className="mt-2 text-[10px] uppercase tracking-wider text-zinc-600">
               {aggType} · {data.length} row{data.length === 1 ? "" : "s"}

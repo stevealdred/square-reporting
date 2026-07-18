@@ -81,6 +81,8 @@ interface ResultsChartProps {
   columns: string[];
   timeDimension: TimeDimensionClause | null;
   columnTitles: Record<string, string>;
+  /** ISO 4217 code from the merchant's Square locations (e.g. "CAD"). */
+  currency?: string;
 }
 
 const SERIES_COLORS = [
@@ -101,6 +103,7 @@ export function ResultsChart({
   columns,
   timeDimension,
   columnTitles,
+  currency,
 }: ResultsChartProps) {
   const [theme] = useTheme();
   const palette = theme === "light" ? LIGHT_PALETTE : DARK_PALETTE;
@@ -138,6 +141,7 @@ export function ResultsChart({
     () => buildLocationNameMap(locationsData?.locations),
     [locationsData?.locations],
   );
+  const moneyCurrency = currency || locationsData?.currency;
 
   function formatDimensionValue(member: string, value: unknown): string {
     if (isLocationIdMember(member) && typeof value === "string") {
@@ -352,10 +356,20 @@ export function ResultsChart({
 
   function tooltipFormatter(value: unknown, name: string) {
     if (timePivot) {
-      return [formatMeasureValue(value, cube?.measures.find((m) => m.name === primaryMeasure)), name];
+      return [
+        formatMeasureValue(
+          value,
+          cube?.measures.find((m) => m.name === primaryMeasure),
+          moneyCurrency,
+        ),
+        name,
+      ];
     }
     const measure = cube?.measures.find((m) => m.name === name);
-    return [formatMeasureValue(value, measure), measure?.title || name];
+    return [
+      formatMeasureValue(value, measure, moneyCurrency),
+      measure?.title || name,
+    ];
   }
 
   const tooltipContentStyle = {
