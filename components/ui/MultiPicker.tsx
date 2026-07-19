@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { StabilityBadge } from "./Badge";
 
 export interface MultiPickerItem {
@@ -42,6 +42,18 @@ export function MultiPicker({
   const [open, setOpen] = useState(false);
   const inputId = useId();
   const selected = useMemo(() => new Set(value), [value]);
+  // Stable fingerprint so switching cubes/views clears a leftover search
+  // without resetting on every parent re-render (items is a new array each time).
+  const itemsKey = useMemo(
+    () => items.map((it) => it.name).join("\0"),
+    [items],
+  );
+
+  useEffect(() => {
+    setQuery("");
+    setOpen(false);
+  }, [itemsKey]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return items;
@@ -113,7 +125,7 @@ export function MultiPicker({
           }}
           onFocus={() => setOpen(true)}
           onBlur={() => {
-            // Delay so onClick on the option fires first.
+            // Delay so option mousedown/click can fire first.
             setTimeout(() => setOpen(false), 150);
           }}
           placeholder={placeholder}
@@ -132,7 +144,13 @@ export function MultiPicker({
                   <button
                     key={it.name}
                     type="button"
-                    onClick={() => toggle(it.name)}
+                    // preventDefault keeps the search input focused so blur
+                    // doesn't close the menu before the toggle runs.
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      if (it.disabled && !isSelected) return;
+                      toggle(it.name);
+                    }}
                     disabled={it.disabled && !isSelected}
                     title={it.disabledReason || it.tooltip || it.description}
                     className={`flex w-full items-start justify-between gap-3 px-3 py-2 text-left text-sm transition-colors ${

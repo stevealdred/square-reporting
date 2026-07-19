@@ -208,6 +208,7 @@ export function QueryBuilder({
         >
           {cube ? (
             <MeasureSelector
+              key={`${state.cube}:measures`}
               measures={cube.measures}
               value={state.measures}
               onChange={(next) => update("measures", next)}
@@ -232,6 +233,7 @@ export function QueryBuilder({
         >
           {cube ? (
             <DimensionSelector
+              key={`${state.cube}:dimensions`}
               dimensions={cube.dimensions}
               value={state.dimensions}
               onChange={(next) => update("dimensions", next)}
@@ -270,6 +272,7 @@ export function QueryBuilder({
           {cube ? (
             cube.segments.length ? (
               <SegmentSelector
+                key={`${state.cube}:segments`}
                 segments={cube.segments}
                 value={state.segments}
                 onChange={(next) => update("segments", next)}
