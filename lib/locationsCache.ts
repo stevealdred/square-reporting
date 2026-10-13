@@ -6,7 +6,7 @@ interface CacheEntry {
   fetchedAt: number;
 }
 
-const cache: { current: CacheEntry | null } = { current: null };
+const cache = new Map<string, CacheEntry>();
 
 function ttlMs(): number {
   const raw = process.env.LOCATIONS_CACHE_TTL_SECONDS;
@@ -27,29 +27,29 @@ export interface GetLocationsResult {
 }
 
 /**
- * Module-level in-memory cache for the merchant's location list. Locations
- * change very rarely, so an hour-long TTL is a good default. Use `force` (or
- * call `invalidateLocationsCache`) after a known change.
+ * Module-level in-memory cache for the merchant's location list, keyed by
+ * Square account id. Locations change very rarely, so an hour-long TTL is a
+ * good default. Use `force` (or call `invalidateLocationsCache`) after a
+ * known change.
  */
 export async function getCachedLocations(
+  accountId: string,
+  accessToken: string,
   options: { force?: boolean } = {},
 ): Promise<GetLocationsResult> {
   const now = Date.now();
-  if (
-    !options.force &&
-    cache.current &&
-    now - cache.current.fetchedAt < ttlMs()
-  ) {
+  const existing = cache.get(accountId);
+  if (!options.force && existing && now - existing.fetchedAt < ttlMs()) {
     return {
       ok: true,
       status: 200,
-      locations: cache.current.locations,
+      locations: existing.locations,
       cached: true,
-      fetchedAt: cache.current.fetchedAt,
+      fetchedAt: existing.fetchedAt,
     };
   }
 
-  const result = await fetchLocations();
+  const result = await fetchLocations(accessToken);
   if (!result.ok || !result.locations) {
     return {
       ok: false,
@@ -59,7 +59,7 @@ export async function getCachedLocations(
     };
   }
 
-  cache.current = { locations: result.locations, fetchedAt: now };
+  cache.set(accountId, { locations: result.locations, fetchedAt: now });
   return {
     ok: true,
     status: 200,
@@ -69,6 +69,10 @@ export async function getCachedLocations(
   };
 }
 
-export function invalidateLocationsCache(): void {
-  cache.current = null;
+export function invalidateLocationsCache(accountId?: string): void {
+  if (accountId) {
+    cache.delete(accountId);
+  } else {
+    cache.clear();
+  }
 }

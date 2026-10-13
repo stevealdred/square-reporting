@@ -7,13 +7,14 @@ interface CacheEntry {
 }
 
 /**
- * Module-level in-memory cache for the Reporting API schema.
+ * Module-level in-memory cache for the Reporting API schema, keyed by Square
+ * account id so switching merchants does not reuse another merchant's schema.
  *
  * The schema rarely changes, so we keep the result around for an hour by
  * default (override with `META_CACHE_TTL_SECONDS`). Restarting the dev
  * server clears the cache, and `force: true` will bypass it explicitly.
  */
-const cache: { current: CacheEntry | null } = { current: null };
+const cache = new Map<string, CacheEntry>();
 
 function ttlMs(): number {
   const raw = process.env.META_CACHE_TTL_SECONDS;
@@ -34,20 +35,23 @@ export interface GetMetaResult {
 }
 
 export async function getCachedMeta(
+  accountId: string,
+  accessToken: string,
   options: { force?: boolean } = {},
 ): Promise<GetMetaResult> {
   const now = Date.now();
-  if (!options.force && cache.current && now - cache.current.fetchedAt < ttlMs()) {
+  const existing = cache.get(accountId);
+  if (!options.force && existing && now - existing.fetchedAt < ttlMs()) {
     return {
       ok: true,
       status: 200,
-      meta: cache.current.meta,
+      meta: existing.meta,
       cached: true,
-      fetchedAt: cache.current.fetchedAt,
+      fetchedAt: existing.fetchedAt,
     };
   }
 
-  const result = await fetchReportingMeta();
+  const result = await fetchReportingMeta(accessToken);
   if (!result.ok || !result.meta) {
     return {
       ok: false,
@@ -57,7 +61,7 @@ export async function getCachedMeta(
     };
   }
 
-  cache.current = { meta: result.meta, fetchedAt: now };
+  cache.set(accountId, { meta: result.meta, fetchedAt: now });
   return {
     ok: true,
     status: 200,
@@ -67,6 +71,10 @@ export async function getCachedMeta(
   };
 }
 
-export function invalidateMetaCache(): void {
-  cache.current = null;
+export function invalidateMetaCache(accountId?: string): void {
+  if (accountId) {
+    cache.delete(accountId);
+  } else {
+    cache.clear();
+  }
 }

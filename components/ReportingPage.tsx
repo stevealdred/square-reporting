@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import useSWR from "swr";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import useSWR, { mutate as globalMutate } from "swr";
 import {
   buildQuery,
   QueryBuilder,
   type BuilderState,
 } from "@/components/QueryBuilder";
+import { AccountSwitcher } from "@/components/AccountSwitcher";
 import { ResultsPanel } from "@/components/ResultsPanel";
 import type {
   ApiQueryResponse,
@@ -66,6 +67,14 @@ export function ReportingPage({ showSignOut = false }: ReportingPageProps) {
   const [result, setResult] = useState<ApiQueryResponse | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isRunning, setIsRunning] = useState(false);
+
+  const handleAccountChanged = useCallback(() => {
+    setState(INITIAL_STATE);
+    setResult(null);
+    setErrorMessage(null);
+    void mutate();
+    void globalMutate("/api/locations");
+  }, [mutate]);
 
   /**
    * When metadata first arrives, default to the `Sales` view (or the first
@@ -135,7 +144,8 @@ export function ReportingPage({ showSignOut = false }: ReportingPageProps) {
         title="Could not connect to Square Reporting"
         subtitle={detail}
         action={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <AccountSwitcher onChanged={handleAccountChanged} />
             <button
               type="button"
               onClick={() => mutate()}
@@ -155,7 +165,11 @@ export function ReportingPage({ showSignOut = false }: ReportingPageProps) {
         }
         helpBox={
           <ol className="mt-4 list-decimal space-y-1 pl-6 text-left text-xs text-zinc-400">
-            <li>Set <code className="font-mono">SQUARE_ACCESS_TOKEN</code> in <code className="font-mono">.env.local</code>.</li>
+            <li>
+              Set <code className="font-mono">SQUARE_ACCESS_TOKEN</code> or{" "}
+              <code className="font-mono">SQUARE_ACCOUNTS</code> plus per-account tokens in{" "}
+              <code className="font-mono">.env.local</code>.
+            </li>
             <li>Confirm the token has the <code className="font-mono">REPORTING_READ</code> scope.</li>
             <li>Restart the dev server (env vars are read at boot).</li>
           </ol>
@@ -176,6 +190,7 @@ export function ReportingPage({ showSignOut = false }: ReportingPageProps) {
           onRun={runQuery}
           isRunning={isRunning}
           showSignOut={showSignOut}
+          onAccountChanged={handleAccountChanged}
         />
       </aside>
       <section className="h-screen overflow-y-auto bg-zinc-950 p-6">

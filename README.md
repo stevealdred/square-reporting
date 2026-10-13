@@ -14,6 +14,7 @@ A standalone Next.js front end for the [Square Reporting API](https://developer.
 - Server-side TTL cache for `/v1/meta` (default: 1 hour)
 - Summary cards, sortable table (with CSV download), auto-selected chart type, and a request/response JSON inspector
 - Dark theme, keyboard-accessible controls, no third-party UI kit
+- Optional env-configured Square account switcher (two or more `SQUARE_ACCOUNTS` entries)
 
 ## Stack
 
@@ -46,7 +47,9 @@ The app runs at <http://localhost:3000>.
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `SQUARE_ACCESS_TOKEN` | _(required)_ | Bearer token sent to the Square Reporting + Locations APIs. Server-only. |
+| `SQUARE_ACCESS_TOKEN` | _(required in single-account mode)_ | Bearer token for Square Reporting + Locations. Server-only. Used alone, or as a fallback for the first multi-account entry. |
+| `SQUARE_ACCOUNTS` | _(unset)_ | Optional `id:Label,id2:Label2` list. With 2+ entries, the header shows an account switcher. Each id needs `SQUARE_ACCESS_TOKEN_<ID>` (id uppercased; non-alnum → `_`). |
+| `SQUARE_ACCESS_TOKEN_<ID>` | _(required per account when using `SQUARE_ACCOUNTS`)_ | Per-merchant token, e.g. `SQUARE_ACCESS_TOKEN_PRIMARY` for id `primary`. |
 | `SQUARE_REPORTING_BASE` | `https://connect.squareup.com/reporting` | Reporting API base URL. Use `https://connect.squareupsandbox.com/reporting` for sandbox. |
 | `SQUARE_CONNECT_BASE` | derived from `SQUARE_REPORTING_BASE` | Optional override for the host used by `/v2/...` endpoints (locations). |
 | `SQUARE_API_VERSION` | _(unset)_ | Optional `Square-Version` header for `/v2` calls. |
@@ -101,6 +104,7 @@ Browser  ──── SWR ────►  /api/locations  ────►  Squa
 ```
 app/
   api/
+    accounts/route.ts      GET/POST — list accounts; set active account cookie
     meta/route.ts          GET — proxies + caches /v1/meta
     query/route.ts         POST — validates + proxies /v1/load with retry loop
     locations/route.ts     GET — proxies + caches /v2/locations for the location picker
@@ -108,6 +112,7 @@ app/
   layout.tsx               dark theme shell
 components/
   QueryBuilder.tsx         left rail orchestrator
+  AccountSwitcher.tsx      env-configured Square account picker
   CubePicker.tsx
   MeasureSelector.tsx
   DimensionSelector.tsx
@@ -122,8 +127,9 @@ components/
   ResultsChart.tsx
   ui/                      generic primitives (Section, Badge, MultiPicker)
 lib/
+  squareAccounts.ts        parse SQUARE_ACCOUNTS + resolve per-account tokens
   squareReporting.ts       Reporting API client + Continue-wait retry
-  metaCache.ts             in-memory TTL cache
+  metaCache.ts             in-memory TTL cache (keyed by account id)
   queryShape.ts            zod schema + helpers
   format.ts                currency/percent/number formatting
   dateRanges.ts            date-range preset list
@@ -134,7 +140,7 @@ lib/
 
 - The `/api/query` route is configured with `maxDuration = 60` for Vercel Hobby. Increase or move to a long-running runtime if you expect frequent slow queries that exceed 60 seconds.
 - The meta cache lives in process memory, so it's per-instance. Behind multiple instances, each one fetches `/v1/meta` once per TTL window.
-- This app uses a single shared access token. If you need to support multiple Square merchants, replace the token with a per-request OAuth flow.
+- For a fixed set of merchants you control, set `SQUARE_ACCOUNTS` plus per-account `SQUARE_ACCESS_TOKEN_<ID>` vars. The active merchant is stored in an HTTP-only cookie (`square_account_id`). For end-user connect/disconnect, replace this with a per-request OAuth flow and durable token storage.
 
 ## Troubleshooting
 

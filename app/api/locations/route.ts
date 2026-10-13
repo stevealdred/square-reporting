@@ -4,6 +4,11 @@ import {
   getCachedLocations,
   invalidateLocationsCache,
 } from "@/lib/locationsCache";
+import {
+  accountIdFromRequest,
+  resolveAccountId,
+  resolveAccountToken,
+} from "@/lib/squareAccounts";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,11 +20,27 @@ function envCurrencyOverride(): string | undefined {
 }
 
 export async function GET(req: NextRequest) {
+  const accountId = resolveAccountId(
+    accountIdFromRequest(req.headers.get("cookie")),
+  );
+  if (!accountId) {
+    return NextResponse.json(
+      {
+        ok: false,
+        status: 500,
+        error:
+          "No Square account configured. Set SQUARE_ACCESS_TOKEN, or SQUARE_ACCOUNTS plus per-account tokens.",
+      },
+      { status: 500 },
+    );
+  }
+
   const force = req.nextUrl.searchParams.get("refresh") === "1";
-  if (force) invalidateLocationsCache();
+  if (force) invalidateLocationsCache(accountId);
 
   try {
-    const result = await getCachedLocations({ force });
+    const accessToken = resolveAccountToken(accountId);
+    const result = await getCachedLocations(accountId, accessToken, { force });
     if (!result.ok) {
       return NextResponse.json(
         {
@@ -27,7 +48,7 @@ export async function GET(req: NextRequest) {
           status: result.status,
           error:
             result.error ||
-            "Failed to load locations. Confirm SQUARE_ACCESS_TOKEN has the MERCHANT_PROFILE_READ scope.",
+            "Failed to load locations. Confirm the active account token has the MERCHANT_PROFILE_READ scope.",
         },
         { status: result.status >= 400 ? result.status : 500 },
       );
@@ -37,6 +58,7 @@ export async function GET(req: NextRequest) {
       envCurrencyOverride() || resolveMerchantCurrency(locations) || "USD";
     return NextResponse.json({
       ok: true,
+      accountId,
       cached: result.cached,
       fetchedAt: result.fetchedAt,
       currency,

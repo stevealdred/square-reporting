@@ -1,22 +1,12 @@
 /**
  * Server-side helper to call Square's Locations API
- * (`GET /v2/locations`). Uses the same `SQUARE_ACCESS_TOKEN` as the Reporting
- * client; the token must have the `MERCHANT_PROFILE_READ` scope.
+ * (`GET /v2/locations`). Callers pass the same access token used for
+ * Reporting; the token must have the `MERCHANT_PROFILE_READ` scope.
  */
 
 import type { SquareLocation } from "./types";
 
 const DEFAULT_REPORTING_BASE = "https://connect.squareup.com/reporting";
-
-function getToken(): string {
-  const token = process.env.SQUARE_ACCESS_TOKEN;
-  if (!token) {
-    throw new Error(
-      "SQUARE_ACCESS_TOKEN is not set. Add it to .env.local (token must have the MERCHANT_PROFILE_READ scope to load locations).",
-    );
-  }
-  return token;
-}
 
 /**
  * Derive Square's "Connect" base URL (the host used for `/v2/...` endpoints)
@@ -43,9 +33,11 @@ export interface FetchLocationsResult {
   error?: string;
 }
 
-export async function fetchLocations(): Promise<FetchLocationsResult> {
+export async function fetchLocations(
+  accessToken: string,
+): Promise<FetchLocationsResult> {
   const headers: Record<string, string> = {
-    Authorization: `Bearer ${getToken()}`,
+    Authorization: `Bearer ${accessToken}`,
     Accept: "application/json",
   };
   if (process.env.SQUARE_API_VERSION) {

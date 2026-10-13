@@ -1,9 +1,9 @@
 /**
  * Server-side helpers that talk to the Square Reporting API.
  *
- * The token is read from `SQUARE_ACCESS_TOKEN` and must have the
- * `REPORTING_READ` scope. This module is intentionally `import "server-only"`
- * adjacent — never import it from a client component.
+ * Callers pass an access token (typically from `resolveAccountToken`). The
+ * token must have the `REPORTING_READ` scope. This module is intentionally
+ * `import "server-only"` adjacent — never import it from a client component.
  */
 
 import type { ReportingMeta, ReportingQuery } from "./types";
@@ -12,16 +12,6 @@ const DEFAULT_BASE = "https://connect.squareup.com/reporting";
 
 function getBaseUrl(): string {
   return (process.env.SQUARE_REPORTING_BASE || DEFAULT_BASE).replace(/\/+$/, "");
-}
-
-function getToken(): string {
-  const token = process.env.SQUARE_ACCESS_TOKEN;
-  if (!token) {
-    throw new Error(
-      "SQUARE_ACCESS_TOKEN is not set. Add it to .env.local (token must have the REPORTING_READ scope).",
-    );
-  }
-  return token;
 }
 
 function envInt(name: string, fallback: number): number {
@@ -39,13 +29,15 @@ export interface FetchMetaResult {
 }
 
 /** GET `/v1/meta` — returns the schema describing all cubes/views. */
-export async function fetchReportingMeta(): Promise<FetchMetaResult> {
+export async function fetchReportingMeta(
+  accessToken: string,
+): Promise<FetchMetaResult> {
   let res: Response;
   try {
     res = await fetch(`${getBaseUrl()}/v1/meta`, {
       method: "GET",
       headers: {
-        Authorization: `Bearer ${getToken()}`,
+        Authorization: `Bearer ${accessToken}`,
         Accept: "application/json",
       },
       cache: "no-store",
@@ -97,11 +89,12 @@ export interface RunQueryResult {
  */
 export async function runReportingQuery(
   query: ReportingQuery,
+  accessToken: string,
 ): Promise<RunQueryResult> {
   const maxRetries = envInt("REPORTING_MAX_RETRIES", 10);
   const retryMs = envInt("REPORTING_RETRY_MS", 1500);
   const url = `${getBaseUrl()}/v1/load`;
-  const token = getToken();
+  const token = accessToken;
 
   let lastJson: unknown = { error: "Continue wait" };
   let lastStatus = 504;

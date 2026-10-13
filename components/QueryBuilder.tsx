@@ -11,6 +11,7 @@ import { OrderLimitControls } from "./OrderLimitControls";
 import { QueryJsonPreview } from "./QueryJsonPreview";
 import { Section } from "./ui/Section";
 import { Pill } from "./ui/Badge";
+import { AccountSwitcher } from "./AccountSwitcher";
 import { SignOutButton } from "./SignOutButton";
 import { ThemeToggle } from "./ui/ThemeToggle";
 import type {
@@ -45,6 +46,7 @@ interface QueryBuilderProps {
   onRun: () => void;
   isRunning: boolean;
   showSignOut?: boolean;
+  onAccountChanged?: (accountId: string) => void;
 }
 
 export function hasActiveSelections(state: BuilderState): boolean {
@@ -96,6 +98,7 @@ export function QueryBuilder({
   onRun,
   isRunning,
   showSignOut = false,
+  onAccountChanged,
 }: QueryBuilderProps) {
   const cube: CubeMeta | null = useMemo(
     () => meta.cubes.find((c) => c.name === state.cube) ?? null,
@@ -170,6 +173,7 @@ export function QueryBuilder({
                 {cube.type === "view" ? "View" : "Cube"}
               </Pill>
             )}
+            <AccountSwitcher onChanged={onAccountChanged} />
             {showSignOut ? <SignOutButton /> : null}
             <ThemeToggle />
           </div>

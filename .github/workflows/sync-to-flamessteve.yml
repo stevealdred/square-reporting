@@ -1,0 +1,37 @@
+name: Sync to FlamesSteve/square-advanced-reporting
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: sync-to-flamessteve
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    if: github.repository == 'stevealdred/square-reporting'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          # The default GITHUB_TOKEN auth header would override the PAT when pushing to github.com.
+          persist-credentials: false
+
+      - name: Push main to target repo
+        env:
+          SYNC_TOKEN: ${{ secrets.SYNC_TO_FLAMESSTEVE }}
+        run: |
+          if [ -z "$SYNC_TOKEN" ]; then
+            echo "::error::Secret SYNC_TO_FLAMESSTEVE is not set or not available to this workflow."
+            exit 1
+          fi
+          # Vercel deploys only if the commit author is a member of the team that owns the project.
+          # The source commits belong to stevealdred, so rewrite the tip commit as FlamesSteve on the mirror only.
+          git config user.name "FlamesSteve"
+          git config user.email "195829961+FlamesSteve@users.noreply.github.com"
+          git commit --amend --reset-author --no-edit
+          git push --force "https://x-access-token:${SYNC_TOKEN}@github.com/FlamesSteve/square-advanced-reporting.git" HEAD:refs/heads/main

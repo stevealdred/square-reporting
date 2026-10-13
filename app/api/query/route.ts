@@ -1,6 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { runReportingQuery } from "@/lib/squareReporting";
 import { pruneQuery, reportingQuerySchema } from "@/lib/queryShape";
+import {
+  accountIdFromRequest,
+  resolveAccountId,
+  resolveAccountToken,
+} from "@/lib/squareAccounts";
 import type {
   ApiQueryResponse,
   ReportingLoadResponse,
@@ -37,8 +42,19 @@ export async function POST(req: NextRequest) {
 
   const query: ReportingQuery = pruneQuery(parsed.data as ReportingQuery);
 
+  const accountId = resolveAccountId(
+    accountIdFromRequest(req.headers.get("cookie")),
+  );
+  if (!accountId) {
+    return jsonError(
+      500,
+      "No Square account configured. Set SQUARE_ACCESS_TOKEN, or SQUARE_ACCOUNTS plus per-account tokens.",
+    );
+  }
+
   try {
-    const result = await runReportingQuery(query);
+    const accessToken = resolveAccountToken(accountId);
+    const result = await runReportingQuery(query, accessToken);
 
     if (result.status === 200 && isLoadResponse(result.json)) {
       const payload = result.json;
