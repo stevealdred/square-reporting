@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { requireReportingAccess } from "@/lib/reportingAccess";
 import { resolveAccountToken } from "@/lib/squareAccounts";
 import { loadSuitesSales, parsePayPeriod } from "@/lib/suitesSales";
 
@@ -12,6 +13,9 @@ export const maxDuration = 60;
  * The Square token stays in the server environment and is not in this response.
  */
 export async function GET(req: NextRequest) {
+  const denied = await requireReportingAccess(req);
+  if (denied) return denied;
+
   const period = parsePayPeriod(
     req.nextUrl.searchParams.get("start"),
     req.nextUrl.searchParams.get("end"),
