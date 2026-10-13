@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import type { Session } from "next-auth";
+import { excelSignInRequired, isExcelBearerProbe } from "@/lib/excelSignIn";
 import { isMainPageSsoEnabled } from "@/lib/mainPageAuth";
 
 function gateMainPage(req: NextRequest & { auth: Session | null }) {
@@ -22,6 +23,11 @@ function gateMainPage(req: NextRequest & { auth: Session | null }) {
 let withAuth: ((req: NextRequest, ctx: any) => any) | null = null;
 
 export default async function middleware(req: NextRequest) {
+  const { pathname } = req.nextUrl;
+  if (isExcelBearerProbe(req) && (pathname === "/" || pathname === "/web")) {
+    return excelSignInRequired();
+  }
+
   if (!isMainPageSsoEnabled()) {
     withAuth = null;
     return NextResponse.next();
@@ -36,5 +42,5 @@ export default async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/", "/login"],
+  matcher: ["/", "/login", "/web"],
 };

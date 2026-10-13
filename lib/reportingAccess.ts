@@ -11,7 +11,8 @@
 import { createRemoteJWKSet, jwtVerify, type JWTPayload } from "jose";
 import { NextResponse, type NextRequest } from "next/server";
 import { auth } from "@/auth";
-import { getAllowedEntraTenants, isEntraTenantAllowed, resolveEntraIssuer } from "@/lib/entraTenants";
+import { isEntraTenantAllowed } from "@/lib/entraTenants";
+import { excelSignInRequired } from "@/lib/excelSignIn";
 
 const entraKeys = createRemoteJWKSet(
   new URL("https://login.microsoftonline.com/common/discovery/v2.0/keys"),
@@ -42,7 +43,7 @@ export async function requireReportingAccess(req: NextRequest): Promise<NextResp
   const token = bearerToken(req);
   if (token && (await accessTokenIsAllowed(token, req.nextUrl.origin))) return null;
 
-  return signInRequired(req);
+  return excelSignInRequired();
 }
 
 function bearerToken(req: NextRequest): string | null {
@@ -74,27 +75,3 @@ async function accessTokenIsAllowed(token: string, origin: string): Promise<bool
   }
 }
 
-function signInRequired(req: NextRequest): NextResponse {
-  const resource = req.nextUrl.origin;
-  return NextResponse.json(
-    { error: "Sign in required." },
-    {
-      status: 401,
-      headers: {
-        "WWW-Authenticate": `Bearer authorization_uri="${authorizationUri()}", resource_id="${resource}"`,
-      },
-    },
-  );
-}
-
-function authorizationUri(): string {
-  const issuer = resolveEntraIssuer();
-  if (issuer?.includes("/organizations")) {
-    return "https://login.microsoftonline.com/organizations/oauth2/v2.0/authorize";
-  }
-  const tenants = getAllowedEntraTenants();
-  if (tenants.length === 1) {
-    return `https://login.microsoftonline.com/${tenants[0]}/oauth2/v2.0/authorize`;
-  }
-  return "https://login.microsoftonline.com/organizations/oauth2/v2.0/authorize";
-}
