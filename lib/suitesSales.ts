@@ -1,29 +1,21 @@
 /**
  * Suites gratuity totals for the workbook.
  *
- * Location ids are filled in here, not in the Excel file. Leave `include`
- * false until the id is confirmed. Saddleroom stays off until that id is
- * confirmed for these pools. The access token is never read or returned here;
- * callers pass the token from `resolveAccountToken`.
+ * Location ids come from the workbook request, not from this file.
+ * The access token is never read or returned here; callers pass the
+ * token from `resolveAccountToken`.
  */
 
 import { runReportingQuery } from "./squareReporting";
 import type { ReportingLoadResponse, ReportingQuery } from "./types";
 
-export interface SuitesLocation {
-  locationId: string;
-  workbookLocation: string;
-  include: boolean;
-  sort: number;
+export interface RequestedLocation {
+  location: string;
+  id: string;
 }
 
-export const SUITES_LOCATIONS: SuitesLocation[] = [
-  { locationId: "REPLACE_CLUB", workbookLocation: "Club Level Pantry", include: false, sort: 1 },
-  { locationId: "REPLACE_ALUMNI", workbookLocation: "Alumni Pantry", include: false, sort: 2 },
-  { locationId: "REPLACE_SADDLE", workbookLocation: "Saddleroom Pantry", include: false, sort: 3 },
-  { locationId: "REPLACE_EAST", workbookLocation: "East Suites", include: false, sort: 4 },
-  { locationId: "REPLACE_WEST", workbookLocation: "West Suites", include: false, sort: 5 },
-];
+const LOCATION_ID = /^[A-Za-z0-9_-]{1,64}$/;
+const MAX_LOCATIONS = 50;
 
 export interface SuitesSalesRow {
   Location: string;
@@ -47,24 +39,58 @@ export function parsePayPeriod(
   return { start, end };
 }
 
-export function includedSuitesLocations(): SuitesLocation[] {
-  return SUITES_LOCATIONS.filter(
-    (row) => row.include && !row.locationId.startsWith("REPLACE_"),
-  ).sort((a, b) => a.sort - b.sort);
+export function parseRequestedLocations(
+  value: unknown,
+): { locations: RequestedLocation[] } | { error: string } {
+  if (!Array.isArray(value)) {
+    return { error: "locations must be a list of location and id." };
+  }
+  if (value.length > MAX_LOCATIONS) {
+    return { error: "locations cannot include more than 50 rows." };
+  }
+
+  const locations: RequestedLocation[] = [];
+  const seenNames = new Set<string>();
+  const seenIds = new Set<string>();
+  for (const item of value) {
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      return { error: "Each location must include a name and a Square location id." };
+    }
+    const record = item as Record<string, unknown>;
+    const location = typeof record.location === "string" ? record.location.trim() : "";
+    const id = typeof record.id === "string" ? record.id.trim() : "";
+    if (!location || location.length > 80 || /[\u0000-\u001F]/.test(location)) {
+      return { error: "Each location needs a name." };
+    }
+    if (!LOCATION_ID.test(id)) {
+      return { error: `Square location id for ${location} is not valid.` };
+    }
+    const nameKey = location.toLowerCase();
+    if (seenNames.has(nameKey)) {
+      return { error: `Location ${location} is listed more than once.` };
+    }
+    if (seenIds.has(id)) {
+      return { error: `Square location id ${id} is listed more than once.` };
+    }
+    seenNames.add(nameKey);
+    seenIds.add(id);
+    locations.push({ location, id });
+  }
+  return { locations };
 }
 
 export async function loadSuitesSales(
   start: string,
   end: string,
   accessToken: string,
+  locations: RequestedLocation[],
 ): Promise<
   | { ok: true; rows: SuitesSalesRow[] }
   | { ok: false; status: number; error: string }
 > {
-  const included = includedSuitesLocations();
-  if (included.length === 0) return { ok: true, rows: [] };
+  if (locations.length === 0) return { ok: true, rows: [] };
 
-  const locationIds = included.map((row) => row.locationId);
+  const locationIds = locations.map((row) => row.id);
   const [orders, charges] = await Promise.all([
     runReportingQuery(ordersQuery(start, end, locationIds), accessToken),
     runReportingQuery(serviceChargeQuery(start, end, locationIds), accessToken),
@@ -90,13 +116,11 @@ export async function loadSuitesSales(
 
   return {
     ok: true,
-    rows: included.map((row) => ({
-      Location: row.workbookLocation,
-      "Net Sales": round2(net.get(row.locationId) ?? 0),
-      "Service Charge": round2(
-        (scAmount.get(row.locationId) ?? 0) - (scTax.get(row.locationId) ?? 0),
-      ),
-      Tips: round2(tips.get(row.locationId) ?? 0),
+    rows: locations.map((row) => ({
+      Location: row.location,
+      "Net Sales": round2(net.get(row.id) ?? 0),
+      "Service Charge": round2((scAmount.get(row.id) ?? 0) - (scTax.get(row.id) ?? 0)),
+      Tips: round2(tips.get(row.id) ?? 0),
     })),
   };
 }

@@ -57,7 +57,7 @@ The app runs at <http://localhost:3000>.
 | `LOCATIONS_CACHE_TTL_SECONDS` | `3600` | How long the location list is cached in-process. |
 | `REPORTING_MAX_RETRIES` | `10` | Maximum `Continue wait` retries before returning HTTP 504. |
 | `REPORTING_RETRY_MS` | `1500` | Delay between retries (ms). |
-| `SUITES_SALES_EXCEL_KEY` | _(unset)_ | Key Excel sends as the `api_key` query parameter on `GET /api/suites/sales`. The query sets `ApiKeyName = "api_key"`. Choose Web API in the credential dialog and apply it to the site root. At least 16 characters. Generate with `openssl rand -base64 32`. |
+| `SUITES_SALES_EXCEL_KEY` | _(unset)_ | Key Excel sends as the `api_key` query parameter on `POST /api/suites/sales`. The query sets `ApiKeyName = "api_key"`. Choose Web API in the credential dialog and apply it to the site root. At least 16 characters. Generate with `openssl rand -base64 32`. |
 
 ### Entegraid main-page SSO (optional)
 
