@@ -12,40 +12,32 @@ export const maxDuration = 60;
  * Workbook refresh. Returns location totals only.
  * The Square token stays in the server environment and is not in this response.
  */
-export async function GET() {
-  return NextResponse.json(
-    {
-      error:
-        "Send the pay period and Square location ids from the Square sheet. Update SquareLocationSales, then refresh again.",
-    },
-    { status: 400 },
-  );
+function readLocationsParam(raw: string | null): { locations: unknown } | { error: string } {
+  if (raw == null || raw.trim() === "") {
+    return { error: "Send the Square location ids from the Square sheet." };
+  }
+  try {
+    return { locations: JSON.parse(raw) };
+  } catch {
+    return { error: "locations must be a JSON list of location and id." };
+  }
 }
 
-export async function POST(req: NextRequest) {
+async function handleSales(
+  req: NextRequest,
+  start: string | null,
+  end: string | null,
+  locations: unknown,
+) {
   const denied = await requireReportingAccess(req);
   if (denied) return denied;
 
-  let body: unknown;
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Request body must be JSON." }, { status: 400 });
-  }
-  if (!body || typeof body !== "object" || Array.isArray(body)) {
-    return NextResponse.json({ error: "Request body must be JSON." }, { status: 400 });
-  }
-  const record = body as Record<string, unknown>;
-
-  const period = parsePayPeriod(
-    typeof record.start === "string" ? record.start : null,
-    typeof record.end === "string" ? record.end : null,
-  );
+  const period = parsePayPeriod(start, end);
   if ("error" in period) {
     return NextResponse.json({ error: period.error }, { status: 400 });
   }
 
-  const requested = parseRequestedLocations(record.locations);
+  const requested = parseRequestedLocations(locations);
   if ("error" in requested) {
     return NextResponse.json({ error: requested.error }, { status: 400 });
   }
@@ -73,4 +65,29 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: result.error }, { status: result.status });
   }
   return NextResponse.json(result.rows);
+}
+
+export async function GET(req: NextRequest) {
+  const params = req.nextUrl.searchParams;
+  const locations = readLocationsParam(params.get("locations"));
+  if ("error" in locations) {
+    return NextResponse.json({ error: locations.error }, { status: 400 });
+  }
+  return handleSales(req, params.get("start"), params.get("end"), locations.locations);
+}
+
+export async function POST(req: NextRequest) {
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Request body must be JSON." }, { status: 400 });
+  }
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return NextResponse.json({ error: "Request body must be JSON." }, { status: 400 });
+  }
+  const record = body as Record<string, unknown>;
+  const start = typeof record.start === "string" ? record.start : null;
+  const end = typeof record.end === "string" ? record.end : null;
+  return handleSales(req, start, end, record.locations);
 }
