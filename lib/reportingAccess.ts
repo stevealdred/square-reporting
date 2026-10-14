@@ -2,9 +2,9 @@
  * Sign-in check for the suites sales route.
  *
  * A browser session from the reporting site is enough for the website.
- * Excel does not send that cookie. It uses Web API authentication and sends
- * SUITES_SALES_EXCEL_KEY as Authorization: Bearer. The key stays in Excel's
- * credential manager, not in the workbook.
+ * Excel does not send that cookie. Web API authentication sends
+ * SUITES_SALES_EXCEL_KEY as the api_key query parameter. The key stays in
+ * Excel's credential manager, not in the workbook.
  */
 
 import { timingSafeEqual } from "crypto";
@@ -58,9 +58,10 @@ export async function requireReportingAccess(req: NextRequest): Promise<NextResp
   if (await hasSiteSession()) return null;
 
   const token = bearerToken(req);
-  if (token && excelKeyMatches(token)) return null;
+  const apiKey = req.nextUrl.searchParams.get("api_key");
+  if ((token && excelKeyMatches(token)) || (apiKey && excelKeyMatches(apiKey))) return null;
   if (token && (await accessTokenIsAllowed(token, req.nextUrl.origin))) return null;
-  if (token) {
+  if (token || apiKey) {
     return NextResponse.json({ error: "Sign in required." }, { status: 401 });
   }
 
