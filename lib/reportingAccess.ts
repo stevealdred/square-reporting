@@ -2,17 +2,19 @@
  * Sign-in check for the suites sales route.
  *
  * A browser session from the reporting site is enough for the website.
- * Excel does not send that cookie. It signs in with the same work account
- * and sends the Entra access token. The Entra app registration needs an
- * Application ID URI equal to this site's origin (https://squarereporting.csec360.com)
- * so Excel can request that token.
+ * Excel does not send that cookie. It uses Web API authentication and sends
+ * SUITES_SALES_EXCEL_KEY as Authorization: Bearer. The key stays in Excel's
+ * credential manager, not in the workbook.
  */
 
+import { timingSafeEqual } from "crypto";
 import { createRemoteJWKSet, jwtVerify, type JWTPayload } from "jose";
 import { NextResponse, type NextRequest } from "next/server";
 import { auth } from "@/auth";
 import { isEntraTenantAllowed } from "@/lib/entraTenants";
 import { excelSignInRequired } from "@/lib/excelSignIn";
+
+const MIN_EXCEL_KEY_LENGTH = 16;
 
 const entraKeys = createRemoteJWKSet(
   new URL("https://login.microsoftonline.com/common/discovery/v2.0/keys"),
@@ -37,11 +39,30 @@ export function payloadIsAllowed(payload: JWTPayload, audiences: string[]): bool
   return list.some((value) => audiences.includes(value));
 }
 
+export function configuredExcelKey(): string | null {
+  const key = process.env.SUITES_SALES_EXCEL_KEY?.trim();
+  if (!key || key.length < MIN_EXCEL_KEY_LENGTH) return null;
+  return key;
+}
+
+export function excelKeyMatches(token: string): boolean {
+  const key = configuredExcelKey();
+  if (!key) return false;
+  const left = Buffer.from(token);
+  const right = Buffer.from(key);
+  if (left.length !== right.length) return false;
+  return timingSafeEqual(left, right);
+}
+
 export async function requireReportingAccess(req: NextRequest): Promise<NextResponse | null> {
   if (await hasSiteSession()) return null;
 
   const token = bearerToken(req);
+  if (token && excelKeyMatches(token)) return null;
   if (token && (await accessTokenIsAllowed(token, req.nextUrl.origin))) return null;
+  if (token) {
+    return NextResponse.json({ error: "Sign in required." }, { status: 401 });
+  }
 
   return excelSignInRequired();
 }
