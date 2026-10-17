@@ -103,15 +103,12 @@ export async function loadSuitesSales(
 
   const net = sumByLocation(orderRows, "Orders.location_id", "Orders.net_sales");
   const tips = sumByLocation(orderRows, "Orders.location_id", "Orders.tips_amount");
+  // total_service_charge_amount is already net of tax. Subtracting
+  // total_service_charge_tax removes the tax a second time.
   const scAmount = sumByLocation(
     chargeRows,
     "ServiceChargesReport.location_id",
     "ServiceChargesReport.total_service_charge_amount",
-  );
-  const scTax = sumByLocation(
-    chargeRows,
-    "ServiceChargesReport.location_id",
-    "ServiceChargesReport.total_service_charge_tax",
   );
 
   return {
@@ -119,7 +116,7 @@ export async function loadSuitesSales(
     rows: locations.map((row) => ({
       Location: row.location,
       "Net Sales": round2(net.get(row.id) ?? 0),
-      "Service Charge": round2((scAmount.get(row.id) ?? 0) - (scTax.get(row.id) ?? 0)),
+      "Service Charge": round2(scAmount.get(row.id) ?? 0),
       Tips: round2(tips.get(row.id) ?? 0),
     })),
   };
@@ -129,6 +126,8 @@ function ordersQuery(start: string, end: string, locationIds: string[]): Reporti
   return {
     measures: ["Orders.net_sales", "Orders.tips_amount"],
     dimensions: ["Orders.location_id"],
+    // Closed checks match Sales Summary. An open tab is not net sales yet.
+    segments: ["Orders.closed_checks"],
     filters: [
       {
         member: "Orders.local_reporting_timestamp",
@@ -151,10 +150,7 @@ function serviceChargeQuery(
   locationIds: string[],
 ): ReportingQuery {
   return {
-    measures: [
-      "ServiceChargesReport.total_service_charge_amount",
-      "ServiceChargesReport.total_service_charge_tax",
-    ],
+    measures: ["ServiceChargesReport.total_service_charge_amount"],
     dimensions: ["ServiceChargesReport.location_id"],
     filters: [
       {
