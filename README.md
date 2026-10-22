@@ -57,7 +57,7 @@ The app runs at <http://localhost:3000>.
 | `LOCATIONS_CACHE_TTL_SECONDS` | `3600` | How long the location list is cached in-process. |
 | `REPORTING_MAX_RETRIES` | `10` | Maximum `Continue wait` retries before returning HTTP 504. |
 | `REPORTING_RETRY_MS` | `1500` | Delay between retries (ms). |
-| `SUITES_SALES_EXCEL_KEY` | _(unset)_ | Key Excel sends as the `api_key` query parameter on `GET /api/suites/sales`. The query sets `ApiKeyName = "api_key"`. Choose Web API in the credential dialog and apply it to the site root. At least 16 characters. Generate with `openssl rand -base64 32`. |
+| `SUITES_SALES_EXCEL_KEY` | _(unset)_ | Key Excel sends as the `api_key` query parameter on `GET /api/suites/sales`, `GET /api/suites/tips`, `GET /api/events/sales`, and `GET /api/events/team`. The query sets `ApiKeyName = "api_key"`. Choose Web API in the credential dialog and apply it to the site root. At least 16 characters. Generate with `openssl rand -base64 32`. |
 
 ### Entegraid main-page SSO (optional)
 
@@ -109,6 +109,8 @@ app/
     meta/route.ts          GET — proxies + caches /v1/meta
     query/route.ts         POST — validates + proxies /v1/load with retry loop
     locations/route.ts     GET — proxies + caches /v2/locations for the location picker
+    suites/sales|tips      GET — Excel workbook location/period totals (Web API key)
+    events/sales|team      GET — Excel event workbook day×location and day×person totals
   page.tsx                 single-page builder + results layout
   layout.tsx               dark theme shell
 components/
