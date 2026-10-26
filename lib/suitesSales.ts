@@ -101,13 +101,18 @@ export async function loadSuitesSales(
   const chargeRows = dataRows(charges);
   if (!chargeRows) return queryFailure(charges);
 
-  // Orders.net_sales includes automatic gratuity. The sheet's net sales
-  // are product sales after that gratuity is removed. A flat custom
-  // service charge is not part of the gratuity and stays in net sales.
+  // Orders.net_sales includes automatic gratuity and the merchant's custom
+  // "Service Charge". Both are gratuity. Net sales on the sheet is product
+  // sales after both are removed. The service charge column still reports them.
   const net = sumByLocation(
     orderRows,
     "Orders.location_id",
     "Orders.net_sales_minus_auto_gratuity",
+  );
+  const customGratuity = sumByLocation(
+    orderRows,
+    "Orders.location_id",
+    "Orders.service_charges_only_sum",
   );
   const tips = sumByLocation(orderRows, "Orders.location_id", "Orders.tips_amount");
   // total_service_charge_amount is already net of tax. Subtracting
@@ -122,7 +127,7 @@ export async function loadSuitesSales(
     ok: true,
     rows: locations.map((row) => ({
       Location: row.location,
-      "Net Sales": round2(net.get(row.id) ?? 0),
+      "Net Sales": round2((net.get(row.id) ?? 0) - (customGratuity.get(row.id) ?? 0)),
       "Service Charge": round2(scAmount.get(row.id) ?? 0),
       Tips: round2(tips.get(row.id) ?? 0),
     })),
@@ -131,7 +136,11 @@ export async function loadSuitesSales(
 
 function ordersQuery(start: string, end: string, locationIds: string[]): ReportingQuery {
   return {
-    measures: ["Orders.net_sales_minus_auto_gratuity", "Orders.tips_amount"],
+    measures: [
+      "Orders.net_sales_minus_auto_gratuity",
+      "Orders.service_charges_only_sum",
+      "Orders.tips_amount",
+    ],
     dimensions: ["Orders.location_id"],
     // Closed checks match Sales Summary. An open tab is not net sales yet.
     segments: ["Orders.closed_checks"],
